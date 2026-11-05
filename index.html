@@ -1,0 +1,474 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Spring 2027 Schedule Finder</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky filter rail (left, stacks on phones) + ranked result list; schedule detail opens in a side drawer */
+:root{--bg:#f4f6fa;--card:#fff;--sunk:#eef1f7;--fg:#14203a;--mute:#5d6782;--line:#dde2ec;--navy:#13306b;--accent:#2f6fd6;--accent-fg:#fff;
+--fin:#2f6fd6;--mkt:#c2410c;--bl:#7c3aed;--vsb:#0f766e;--thl:#a16207;--his:#be185d;--sci:#4d7c0f;--ai:#475569;
+--good:#15803d;--warn:#b45309;--bad:#b91c1c;--shade:rgba(15,25,50,.35);
+--disp:"Fraunces",Georgia,serif;--body:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1322;--card:#151d31;--sunk:#10182a;--fg:#e6eaf5;--mute:#98a2bf;--line:#28324c;--navy:#a9c1f7;--accent:#5b92f0;--accent-fg:#0d1322;--fin:#3f7ee6;--mkt:#d9692f;--bl:#8b62ea;--vsb:#13887a;--thl:#b8861c;--his:#d2457f;--sci:#5f9614;--ai:#64748b;--good:#4ade80;--warn:#f0b04b;--bad:#f87171;--shade:rgba(0,0,0,.55);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1322;--card:#151d31;--sunk:#10182a;--fg:#e6eaf5;--mute:#98a2bf;--line:#28324c;--navy:#a9c1f7;--accent:#5b92f0;--accent-fg:#0d1322;--fin:#3f7ee6;--mkt:#d9692f;--bl:#8b62ea;--vsb:#13887a;--thl:#b8861c;--his:#d2457f;--sci:#5f9614;--ai:#64748b;--good:#4ade80;--warn:#f0b04b;--bad:#f87171;--shade:rgba(0,0,0,.55);color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 60px}
+.wrap{max-width:1240px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;gap:6px 24px;align-items:end;justify-content:space-between;margin-bottom:18px}
+h1{font:600 clamp(26px,3.6vw,36px)/1.1 var(--disp);color:var(--navy);margin:0;text-wrap:balance}
+.lede{color:var(--mute);margin:4px 0 0;max-width:72ch}
+.stats{display:flex;gap:18px;font:500 12px var(--mono);color:var(--mute)}
+.stats b{display:block;font:600 20px var(--mono);color:var(--fg)}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:880px){.layout{grid-template-columns:1fr}}
+.rail{position:sticky;top:max(12px,env(safe-area-inset-top,0px));background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:14px;max-height:calc(100vh - 24px);overflow:auto}
+@media(max-width:880px){.rail{position:static;max-height:none}}
+.f{display:grid;gap:5px;min-width:0}
+.f>label,.lbl{font:600 11px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--mute)}
+select,input[type=text]{width:100%;font:13px var(--body);color:var(--fg);background:var(--sunk);border:1px solid var(--line);border-radius:7px;padding:7px 8px}
+select:focus-visible,input:focus-visible,button:focus-visible,.row:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{display:inline-flex;align-items:center;gap:6px;font:12px var(--body);background:var(--sunk);border:1px solid var(--line);border-radius:99px;padding:2px 4px 2px 9px;max-width:100%}
+.chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip button{border:0;background:none;color:var(--mute);cursor:pointer;font-size:14px;line-height:1;padding:0 4px}
+.chip.inc{border-color:var(--good)}.chip.exc{border-color:var(--bad);text-decoration:line-through;text-decoration-color:var(--bad)}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.btn{font:600 13px var(--body);border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.count{font:500 13px var(--mono);color:var(--mute)}
+.list{display:grid;gap:10px}
+.row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:64px minmax(0,1fr) 150px;gap:4px 14px;cursor:pointer;text-align:left;color:inherit;font:inherit;width:100%}
+.row:hover{border-color:var(--accent)}
+@media(max-width:620px){.row{grid-template-columns:52px minmax(0,1fr)}.mini{grid-column:1/-1}}
+.rk{font:600 22px var(--disp);color:var(--navy);line-height:1}
+.rk small{display:block;font:500 11px var(--mono);color:var(--mute);margin-top:6px}
+.cls{display:grid;gap:3px;min-width:0}
+.cl{display:flex;gap:8px;align-items:baseline;min-width:0;font-size:13px}
+.cl .code{font:600 12px var(--mono);white-space:nowrap}
+.cl .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{flex:none;width:8px;height:8px;border-radius:2px;align-self:center}
+.prof{white-space:nowrap;color:var(--mute)}
+.prof b{font-weight:500;color:var(--fg)}
+a.rl{color:inherit;text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:2px}a.rl:hover{color:var(--accent)}
+.ev a.rl{color:#fff;text-decoration-color:rgba(255,255,255,.7)}
+.star{font:600 12px var(--mono);font-variant-numeric:tabular-nums}
+.hi{color:var(--good)}.mid{color:var(--fg)}.lo{color:var(--warn)}.na{color:var(--mute);font-weight:500}
+.meta{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:4px 12px;font:12px var(--mono);color:var(--mute);margin-top:4px}
+.pill{font:600 11px var(--body);padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+.pill.warn{border-color:var(--warn);color:var(--warn)}
+.mini{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;align-self:start}
+.mini .c{position:relative;height:66px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.mini .c i{position:absolute;left:1px;right:1px;border-radius:2px}
+.mini .d{font:600 9px var(--body);text-align:center;color:var(--mute)}
+.more{display:flex;justify-content:center;margin-top:14px}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:30px;text-align:center;color:var(--mute)}
+/* drawer */
+.shade{position:fixed;inset:0;background:var(--shade);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(920px,100vw);background:var(--bg);z-index:21;overflow:auto;border-left:1px solid var(--line);
+ padding:calc(18px + env(safe-area-inset-top,0px)) max(18px,env(safe-area-inset-right,0px)) calc(40px + env(safe-area-inset-bottom,0px)) 18px}
+.dh{display:flex;gap:10px 18px;align-items:baseline;flex-wrap:wrap;justify-content:space-between}
+.dh h2{font:600 26px var(--disp);color:var(--navy);margin:0}
+.score{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}
+@media(max-width:560px){.score{grid-template-columns:repeat(2,1fr)}}
+.sc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.sc b{display:block;font:600 20px var(--mono)}
+.sc span{font:600 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:6px 0 14px}
+.tab{border:0;background:none;font:600 13px var(--body);color:var(--mute);padding:8px 12px;border-bottom:2px solid transparent;cursor:pointer}
+.tab[aria-selected=true]{color:var(--fg);border-bottom-color:var(--accent)}
+.week{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;overflow-x:auto}
+.wg{display:grid;grid-template-columns:44px repeat(5,minmax(118px,1fr));min-width:640px}
+.wg .hd{font:600 12px var(--body);text-align:center;color:var(--mute);padding-bottom:6px}
+.wg .col{position:relative;height:780px;border-left:1px solid var(--line);background:repeating-linear-gradient(var(--card) 0 77px,var(--line) 77px 78px)}
+.wg .hrs{position:relative;height:780px}
+.wg .hrs span{position:absolute;right:6px;font:10px var(--mono);color:var(--mute);transform:translateY(-50%)}
+.ev{position:absolute;left:3px;right:3px;border-radius:6px;padding:4px 6px;color:#fff;overflow:hidden;font-size:11px;line-height:1.25}
+.ev b{display:block;font:600 11px var(--mono)}
+.ev .p{opacity:.95}
+.cards{display:grid;gap:10px;margin-top:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:6px;border-left:4px solid var(--c)}
+.card h4{margin:0;font:600 15px var(--body);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.card h4 .code{font:600 13px var(--mono);color:var(--mute)}
+.kv{display:grid;grid-template-columns:110px minmax(0,1fr);gap:3px 12px;font-size:13px}
+.kv dt{color:var(--mute);font-weight:500}.kv dd{margin:0}
+.prio{font:600 11px var(--body);padding:1px 8px;border-radius:99px;color:#fff}
+.p3{background:var(--bad)}.p2{background:var(--warn)}.p1{background:var(--accent)}.p0{background:var(--ai)}
+.bk{display:grid;gap:6px}
+.bk .row{grid-template-columns:64px minmax(0,1fr)}
+.close{font-size:20px;line-height:1;padding:6px 12px}
+.note{font-size:12px;color:var(--mute)}
+
+/* overflow fixes: let long option/chip text shrink or wrap instead of widening the rail */
+.layout{grid-template-columns:clamp(300px,28vw,360px) minmax(0,1fr)}
+@media(max-width:880px){.layout{grid-template-columns:minmax(0,1fr)}}
+.rail{grid-template-columns:minmax(0,1fr);overflow-x:hidden}
+.rail>*,.f>*{min-width:0}
+.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+select{min-width:0;max-width:100%;text-overflow:ellipsis}
+.btn{min-width:0;overflow-wrap:anywhere}
+.chip{border-radius:10px;padding:4px 4px 4px 9px;align-items:flex-start}
+.chip span{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.35}
+.chk{align-items:flex-start}.chk input{margin-top:3px;flex:none}
+.cl{flex-wrap:wrap;row-gap:0}
+.cl .t{white-space:normal;flex:1 1 160px}
+.prof{white-space:normal;flex:1 1 100%;padding-left:16px}
+.meta{overflow-wrap:anywhere}
+.dh h2{min-width:0}
+.ev{overflow:hidden}
+.row{grid-template-columns:84px minmax(0,1fr) 150px}
+@media(max-width:620px){.row,.bk .row{grid-template-columns:minmax(0,1fr)}.rk{display:flex;gap:10px;align-items:baseline}.rk small{margin:0}.meta{grid-column:1/-1}}
+.bk .row{grid-template-columns:84px minmax(0,1fr)}
+.rk{font-size:clamp(17px,1.6vw,22px);overflow-wrap:anywhere}
+input[type=range]{margin:0}
+.drawer{overflow-x:hidden}
+.swipe{display:none;margin:0 0 6px}@media(max-width:700px){.swipe{display:block}}
+.ev{font-size:10.5px;line-height:1.2;padding:3px 5px}.ev b{font-size:10.5px}
+.ev .tt{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Backup plans view */
+.views{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 0 16px}
+.view{border:0;background:none;font:600 14px var(--body);color:var(--mute);padding:9px 14px;border-bottom:2px solid transparent;cursor:pointer}
+.view[aria-selected=true]{color:var(--fg);border-bottom-color:var(--accent)}
+.bp{display:grid;gap:26px;max-width:1040px;min-width:0}
+.bp>*{min-width:0}
+.bp h2{font:600 22px var(--disp);color:var(--navy);margin:0 0 4px}
+.bp section>p{margin:0 0 12px;color:var(--mute);max-width:75ch}
+.alert{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:10px;padding:12px 14px;display:grid;gap:6px}
+.alert ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.order{display:grid;gap:8px;margin:0;padding:0;list-style:none;counter-reset:o}
+.order li{counter-increment:o;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px 10px 46px;position:relative;display:grid;gap:3px}
+.order li::before{content:counter(o);position:absolute;left:12px;top:10px;width:24px;height:24px;border-radius:50%;background:var(--navy);color:var(--bg);font:600 12px/24px var(--mono);text-align:center}
+.ln{display:flex;flex-wrap:wrap;gap:3px 10px;align-items:baseline}
+.code{font-family:var(--mono);font-weight:600}
+.sub{font-size:12.5px;color:var(--mute)}
+.tier{font:600 11px var(--body);padding:1px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.t-critical,.t-closed{color:var(--bad)}.t-high{color:var(--warn)}.t-watch{color:var(--accent)}.t-ok{color:var(--good)}.t-blocked,.t-approval{color:var(--mute)}
+.swap{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px}
+.swap ol{margin:0;padding-left:20px;display:grid;gap:3px;font-size:13px}
+.scn{display:grid;gap:14px}
+.scn h3{margin:0;font:600 15px var(--body);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.tblw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:10px}
+table.w{border-collapse:collapse;width:100%;min-width:620px;font-size:13px}
+table.w th{font:600 11px var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--mute);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+table.w td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:baseline}
+table.w tr:last-child td{border-bottom:0}
+table.w .n{font:500 12px var(--mono);text-align:right;white-space:nowrap}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
+.go{max-width:640px;margin:0 auto}
+.go[hidden],.layout[hidden]{display:none}
+.gohd{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.gohd .age{font:500 13px var(--body);color:var(--mute)}
+.gobtn{font:600 14px var(--body);min-height:44px;padding:0 14px;border-radius:8px;border:1px solid var(--line,#8886);background:none;color:inherit;cursor:pointer}
+.gobtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.gobtn:disabled{opacity:.4}
+.gocl{border:1px solid var(--line,#8886);border-radius:10px;padding:12px;margin-bottom:10px}
+.gocl.got{border-color:var(--accent)}
+.gocl .ln{font-weight:600;overflow-wrap:anywhere}
+.gocl .sub{font-size:13px;color:var(--mute);margin-top:2px}
+.gocl .crn{font:600 20px var(--mono);margin-top:6px;user-select:all;-webkit-user-select:all}
+.gocl .act{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.crns{font:600 15px var(--mono);overflow-wrap:anywhere;user-select:all;-webkit-user-select:all;margin:6px 0 10px}
+</style>
+<div class="wrap">
+<header><div><h1>Spring 2027 Schedule Finder</h1>
+<p class="lede">Every conflict-free schedule from Villanova's Spring 2027 sections, ranked by how much you need each class, the professor's RateMyProfessors score, and how well the times fit you. 16-credit schedules rank first. Closed sections are removed, and classes likely to fill soon rank lower. Seats as of <span id="asOf">–</span>.</p></div>
+<div class="stats"><div><b id="stTotal">–</b>valid combos</div><div><b id="stKept">–</b>ranked here</div><div><b id="stShown">–</b>match filters</div></div></header>
+<div class="views" role="tablist"><button class="view" role="tab" aria-selected="true" data-v="go" type="button">Go time</button><button class="view" role="tab" aria-selected="false" data-v="find" type="button">Schedules</button><button class="view" role="tab" aria-selected="false" data-v="back" type="button">Backup plans</button></div>
+<div class="go" id="go"></div>
+<div class="bp" id="bp" hidden></div>
+<div class="layout" id="findView" hidden>
+<aside class="rail" aria-label="Filters">
+ <div class="f"><label for="q">Search</label><input type="text" id="q" placeholder="Class, professor, or CRN"></div>
+ <div class="two">
+  <div class="f"><label for="fStart">First class at or after</label><select id="fStart"></select></div>
+  <div class="f"><label for="fEnd">Last class ends by</label><select id="fEnd"></select></div>
+ </div>
+ <div class="two">
+  <div class="f"><label for="fFri">Fridays</label><select id="fFri"><option value="any">Any</option><option value="none">No Friday classes</option><option value="1130">Done by 11:30a</option><option value="1240">Done by 12:40p</option><option value="1345">Done by 1:45p</option></select></div>
+  <div class="f"><label for="fN">Classes</label><select id="fN"><option value="0">5 or 6</option><option value="5">Exactly 5</option><option value="6">Exactly 6</option></select></div>
+ </div>
+ <div class="f"><label for="fCourse">Classes: add to include or exclude</label><select id="fCourse"></select>
+  <div class="two"><button class="btn" id="incCourse" type="button">Include</button><button class="btn" id="excCourse" type="button">Exclude</button></div>
+  <div class="chips" id="courseChips"></div></div>
+ <div class="f"><label for="fProf">Professors: add to include or exclude</label><select id="fProf"></select>
+  <div class="two"><button class="btn" id="incProf" type="button">Include</button><button class="btn" id="excProf" type="button">Exclude</button></div>
+  <div class="chips" id="profChips"></div></div>
+ <div class="f"><label for="fRmp">Min. average RMP: <span id="rmpVal">any</span></label><input type="range" id="fRmp" min="0" max="45" step="1" value="0"></div>
+ <div class="f"><span class="lbl">Rules</span>
+  <label class="chk"><input type="checkbox" id="fMust" checked> All 3 must-takes (FIN 2114, VSB 3000, VSB 3008)</label>
+  <label class="chk"><input type="checkbox" id="fNo4"> No day with 4+ classes</label>
+  <label class="chk"><input type="checkbox" id="fSeats"> Hide classes rated Almost gone</label>
+  <label class="chk"><input type="checkbox" id="fGen"> Include a History or Science class</label>
+ </div>
+ <div class="f"><label for="fSort">Sort by</label><select id="fSort"><option value="score">Overall score</option><option value="rmp">Average RMP</option><option value="start">Latest first class</option><option value="end">Earliest finish</option></select></div>
+ <button class="btn" id="reset" type="button">Reset filters</button>
+ <p class="note">Click any professor's name to open their RateMyProfessors page. Unrated professors count as 3.4. Ratings with only a few reviews are pulled toward 3.6, so one 5.0 review doesn't outrank 30 reviews averaging 4.5.</p>
+</aside>
+<main>
+ <div class="bar"><span class="count" id="count">Loading schedules…</span></div>
+ <div class="list" id="list"></div>
+ <div class="more"><button class="btn" id="moreBtn" type="button" hidden>Show 50 more</button></div>
+</main>
+</div>
+</div>
+<div class="shade" id="shade" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="dTitle"></aside>
+<script>
+const CATCOL={FIN:'var(--fin)',MKT:'var(--mkt)',BL:'var(--bl)',VSB:'var(--vsb)',THL:'var(--thl)',HIS:'var(--his)',SCI:'var(--sci)',AI:'var(--ai)'};
+const DAYS='MTWRF', DN={M:'Mon',T:'Tue',W:'Wed',R:'Thu',F:'Fri'};
+const MUSTS=['FIN 2114','VSB 3000','VSB 3008'];
+const m=t=>Math.floor(t/100)*60+t%100;
+const fmt=t=>{const h=Math.floor(t/100),mm=String(t%100).padStart(2,'0');return (h>12?h-12:h)+':'+mm+(h>=12?'p':'a')};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let D,SEC,OPEN,SCH,PROFS={};
+const TIER={critical:'Almost gone',high:'Filling fast',watch:'Watch',ok:'Should hold',closed:'Closed',blocked:'Prereq blocked',approval:'Needs approval'};
+const tierHTML=t=>`<span class="tier t-${t}">${TIER[t]}</span>`;
+
+function rmpOf(p){const r=D.rmp[p];return r&&r[0]!=null?{v:r[0],n:r[1]}:null}
+function rmpURL(p){const r=D.rmp[p];return r&&r[2]?'https://www.ratemyprofessors.com/professor/'+r[2]:null}
+function starHTML(p){const r=rmpOf(p),note=(D.rmp[p]||[])[3];if(!r)return `<span class="star na">${esc(note||'no RMP')}</span>`;const c=r.v>=4.2?'hi':r.v<3.4?'lo':'mid';return `<span class="star ${c}">★${r.v.toFixed(1)}</span><span class="note"> (${r.n})${note?' · '+esc(note):''}</span>`}
+// Every professor mention: linked name + class title(s) + RMP
+function nameHTML(p){const u=rmpURL(p);return u?`<a class="rl" href="${u}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(p)}</a>`:esc(p)}
+function profHTML(p,title){return `<span class="prof"><b>${nameHTML(p)}</b> · ${esc(title||[...PROFS[p]].join(', '))} · ${starHTML(p)}</span>`}
+
+async function load(){
+ D=await (await fetch('all_schedules.json')).json();
+ SEC=D.sections.map((s,i)=>{const c=D.courses[s[0]];return {i,key:s[0],code:c[0],title:c[1],cat:c[2],need:c[3],prio:c[4],fills:c[5],desc:c[6],sec:s[1],crn:s[2],days:s[3],start:s[4],end:s[5],prof:s[6],seats:s[7],cap:s[8],lost:s[9],left:s[10],tier:s[11]}});
+ OPEN=SEC.filter(s=>!['closed','blocked','approval'].includes(s.tier));
+ OPEN.forEach(s=>{(PROFS[s.prof]??=new Set()).add(s.title)});
+ SCH=D.schedules.map((r,rank)=>{const ss=r.slice(4).map(i=>SEC[i]).sort((a,b)=>DAYS.indexOf(a.days[0])-DAYS.indexOf(b.days[0])||a.start-b.start);
+  const day={};for(const d of DAYS){const v=ss.filter(s=>s.days.includes(d));if(v.length)day[d]={st:Math.min(...v.map(s=>s.start)),en:Math.max(...v.map(s=>s.end)),n:v.length}}
+  const rated=ss.map(s=>rmpOf(s.prof)).filter(Boolean);
+  return {rank:rank+1,score:r[0],need:r[1],prof:r[2],time:r[3],ss,day,cr:ss.reduce((a,c)=>a+(c.key==='VSB 3000'?1:3),0),
+   first:Math.min(...ss.map(s=>s.start)),last:Math.max(...ss.map(s=>s.end)),
+   keys:new Set(ss.map(s=>s.key)),profs:new Set(ss.map(s=>s.prof)),
+   avg:rated.length?rated.reduce((a,r)=>a+r.v,0)/rated.length:0,
+   must:MUSTS.every(k=>ss.some(s=>s.key===k)),max:Math.max(...Object.values(day).map(x=>x.n)),
+   ge:ss.some(s=>s.cat==='HIS'||s.cat==='SCI'),
+   sig:ss.map(s=>s.key).sort().join('|'),
+   text:ss.map(s=>`${s.code} ${s.title} ${s.prof} ${s.crn}`).join(' ').toLowerCase()}});
+ document.getElementById('stTotal').textContent=D.total.toLocaleString();
+ document.getElementById('stKept').textContent=SCH.length.toLocaleString();
+ asOf.textContent=D.asOf;
+ loadMarks();initFilters();render();renderBackups();renderGo();refreshLive();setInterval(refreshLive,90000);
+ document.querySelectorAll('.view').forEach(v=>v.onclick=()=>{document.querySelectorAll('.view').forEach(x=>x.setAttribute('aria-selected',x===v));const w=v.dataset.v;bp.hidden=w!=='back';findView.hidden=w!=='find';go.hidden=w!=='go'});
+}
+
+const F={inc:new Set(),exc:new Set(),pinc:new Set(),pexc:new Set()};
+let shown=50,filtered=[];
+function opt(v,t){return `<option value="${esc(v)}">${esc(t)}</option>`}
+function initFilters(){
+ const times=[800,830,900,930,1000,1030,1100,1130,1200,1230,1300];
+ fStart.innerHTML=opt(0,'Any time')+times.map(t=>opt(t,fmt(t))).join('');
+ const ends=[1300,1400,1430,1500,1530,1600,1630,1700,1730,1800];
+ fEnd.innerHTML=opt(9999,'Any time')+ends.map(t=>opt(t,fmt(t))).join('');
+ const keys=[...new Set(OPEN.map(s=>s.key))].sort((a,b)=>D.courses[a][0].localeCompare(D.courses[b][0]));
+ fCourse.innerHTML=keys.map(k=>{const c=D.courses[k];const ps=[...new Set(OPEN.filter(s=>s.key===k).map(s=>{const r=rmpOf(s.prof);return `${s.prof} ★${r?r.v.toFixed(1):'–'}`}))];return opt(k,`${c[0]} ${c[1]} (${ps.join(', ')})`)}).join('');
+ fProf.innerHTML=Object.keys(PROFS).sort((a,b)=>a.split(' ').pop().localeCompare(b.split(' ').pop())).map(p=>{const r=rmpOf(p);return opt(p,`${p} ★${r?r.v.toFixed(1):'none'}: ${[...PROFS[p]].join(', ')}`)}).join('');
+ incCourse.onclick=()=>{F.exc.delete(fCourse.value);F.inc.add(fCourse.value);chips();render()};
+ excCourse.onclick=()=>{F.inc.delete(fCourse.value);F.exc.add(fCourse.value);chips();render()};
+ incProf.onclick=()=>{F.pexc.delete(fProf.value);F.pinc.add(fProf.value);chips();render()};
+ excProf.onclick=()=>{F.pinc.delete(fProf.value);F.pexc.add(fProf.value);chips();render()};
+ for(const el of [q,fStart,fEnd,fFri,fN,fRmp,fMust,fNo4,fSeats,fGen,fSort])el.addEventListener('input',()=>{shown=50;render()});
+ reset.onclick=()=>{q.value='';fStart.value=0;fEnd.value=9999;fFri.value='any';fN.value=0;fRmp.value=0;fMust.checked=true;fNo4.checked=false;fSeats.checked=false;fGen.checked=false;fSort.value='score';for(const s of Object.values(F))s.clear();chips();shown=50;render()};
+ moreBtn.onclick=()=>{shown+=50;draw()};
+}
+function chips(){
+ const c=(set,cls,lab,kind)=>[...set].map(k=>`<span class="chip ${cls}"><span>${lab(k)}</span><button type="button" aria-label="Remove" data-k="${esc(k)}" data-kind="${kind}">×</button></span>`).join('');
+ const cl=k=>{const c=D.courses[k];return esc(c[0]+' '+c[1])};
+ const pl=p=>{const r=rmpOf(p);return nameHTML(p)+esc(` · ${[...PROFS[p]].join(', ')} · ★${r?r.v.toFixed(1):'none'}`)};
+ courseChips.innerHTML=c(F.inc,'inc',cl,'inc')+c(F.exc,'exc',cl,'exc');
+ profChips.innerHTML=c(F.pinc,'inc',pl,'pinc')+c(F.pexc,'exc',pl,'pexc');
+ document.querySelectorAll('.chip button').forEach(b=>b.onclick=()=>{F[b.dataset.kind].delete(b.dataset.k);chips();render()});
+}
+function render(){
+ const st=+fStart.value,en=+fEnd.value,fri=fFri.value,n=+fN.value,rmp=+fRmp.value/10,qq=q.value.trim().toLowerCase();
+ rmpVal.textContent=rmp?rmp.toFixed(1)+'★':'any';
+ filtered=SCH.filter(s=>{
+  if(s.ss.some(c=>MARK.closed.has(c.crn)||c.seats<=0))return false;
+  if(s.first<st||s.last>en)return false;
+  if(fri==='none'&&s.day.F)return false;
+  if(fri!=='any'&&fri!=='none'&&s.day.F&&s.day.F.en>+fri)return false;
+  if(n&&s.ss.length!==n)return false;
+  if(rmp&&s.avg<rmp)return false;
+  if(fMust.checked&&!s.must)return false;
+  if(fNo4.checked&&s.max>=4)return false;
+  if(fSeats.checked&&s.ss.some(c=>c.tier==='critical'))return false;
+  if(fGen.checked&&!s.ge)return false;
+  for(const k of F.inc)if(!s.keys.has(k))return false;
+  for(const k of F.exc)if(s.keys.has(k))return false;
+  for(const p of F.pinc)if(!s.profs.has(p))return false;
+  for(const p of F.pexc)if(s.profs.has(p))return false;
+  if(qq&&!s.text.includes(qq))return false;
+  return true});
+ const so=fSort.value;
+ if(so==='rmp')filtered.sort((a,b)=>b.avg-a.avg||a.rank-b.rank);
+ else if(so==='start')filtered.sort((a,b)=>b.first-a.first||a.rank-b.rank);
+ else if(so==='end')filtered.sort((a,b)=>a.last-b.last||a.rank-b.rank);
+ stShown.textContent=filtered.length.toLocaleString();
+ draw();
+}
+function miniWeek(s){
+ const S=m(800),E=m(1800);
+ return '<div class="mini" aria-hidden="true">'+[...DAYS].map(d=>`<div><div class="d">${DN[d][0]}</div><div class="c">${s.ss.filter(c=>c.days.includes(d)).map(c=>`<i style="top:${(m(c.start)-S)/(E-S)*100}%;height:${(m(c.end)-m(c.start))/(E-S)*100}%;background:${CATCOL[c.cat]}"></i>`).join('')}</div></div>`).join('')+'</div>';
+}
+function dayText(s){
+ const g={};for(const d of DAYS)if(s.day[d]){const k=fmt(s.day[d].st)+'–'+fmt(s.day[d].en);(g[k]??=[]).push(d)}
+ return Object.entries(g).map(([k,ds])=>`${ds.map(d=>DN[d]).join('/')} ${k}`).join(' · ');
+}
+function rowHTML(s){
+ const miss=MUSTS.filter(k=>!s.keys.has(k));
+ return `<div class="row" role="button" tabindex="0" data-r="${s.rank}"><div class="rk">#${s.rank}<small>${s.score.toFixed(1)} pts</small></div>
+ <div class="cls">${s.ss.map(c=>`<div class="cl"><span class="dot" style="background:${CATCOL[c.cat]}"></span><span class="code">${c.code}</span><span class="t">${esc(c.title)}</span>${profHTML(c.prof,c.title)}</div>`).join('')}</div>
+ ${miniWeek(s)}
+ <div class="meta"><span>${dayText(s)}</span><span>avg RMP ${s.avg.toFixed(2)}</span><span>${s.ss.length} classes · ${s.cr} credits</span>${s.day.F?'':'<span class="pill">No Fridays</span>'}${s.ss.filter(c=>c.tier==='critical'||c.tier==='high').map(c=>`<span class="pill warn">${c.code} §${c.sec}: ${c.seats} left</span>`).join('')}${miss.map(k=>`<span class="pill warn">No ${k}</span>`).join('')}</div></div>`;
+}
+function bindRows(root,fn){root.querySelectorAll('.row').forEach(b=>{b.onclick=()=>fn(SCH[b.dataset.r-1]);b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fn(SCH[b.dataset.r-1])}}})}
+function draw(){
+ count.textContent=filtered.length?`Showing ${Math.min(shown,filtered.length).toLocaleString()} of ${filtered.length.toLocaleString()} matching schedules. Click one for the week view.`:'';
+ list.innerHTML=filtered.length?filtered.slice(0,shown).map(rowHTML).join(''):'<div class="empty">No schedules match these filters. Try loosening the time window or removing a class or professor.</div>';
+ moreBtn.hidden=shown>=filtered.length;
+ bindRows(list,openDrawer);
+}
+const PRIO={'Must take now':'p3','High':'p2','Medium':'p1','Low':'p0'};
+function weekHTML(s){
+ const S=m(800),E=m(1800),H=780;
+ let h='<p class="note swipe">Swipe the calendar sideways to see the rest of the week.</p><div class="week"><div class="wg"><div></div>'+[...DAYS].map(d=>`<div class="hd">${DN[d]}</div>`).join('');
+ h+='<div class="hrs">'+[800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800].map(t=>`<span style="top:${(m(t)-S)/(E-S)*H}px">${fmt(t)}</span>`).join('')+'</div>';
+ h+=[...DAYS].map(d=>'<div class="col">'+s.ss.filter(c=>c.days.includes(d)).map(c=>{const r=rmpOf(c.prof);return `<div class="ev" style="top:${(m(c.start)-S)/(E-S)*H}px;height:${(m(c.end)-m(c.start))/(E-S)*H}px;background:${CATCOL[c.cat]}"><b>${c.code}</b><span class="tt">${esc(c.title)}</span><div class="p">${fmt(c.start)}–${fmt(c.end)}</div><div class="p">${nameHTML(c.prof)} · ★${r?r.v.toFixed(1):'–'}</div></div>`}).join('')+'</div>').join('');
+ return h+'</div></div>';
+}
+function cardsHTML(s){
+ return '<div class="cards">'+s.ss.map(c=>`<article class="card" style="--c:${CATCOL[c.cat]}"><h4><span class="code">${c.code} §${c.sec}</span>${esc(c.title)}<span class="prio ${PRIO[c.prio]}">${c.prio}</span></h4>
+ <dl class="kv"><dt>Professor</dt><dd>${profHTML(c.prof,c.title)}</dd>
+ <dt>When</dt><dd>${[...c.days].map(d=>DN[d]).join('/')} ${fmt(c.start)}–${fmt(c.end)}</dd>
+ <dt>About</dt><dd>${esc(c.desc)}</dd>
+ <dt>Fulfills</dt><dd>${esc(c.fills)}</dd>
+ <dt>CRN · seats</dt><dd><span class="star">${c.crn}</span> · ${c.seats} of ${c.cap} open as of ${D.asOf} ${tierHTML(c.tier)}</dd></dl></article>`).join('')+'</div>';
+}
+function backupsHTML(s){
+ const same=SCH.filter(o=>o!==s&&o.sig===s.sig).slice(0,12);
+ const near=SCH.filter(o=>o!==s&&o.sig!==s.sig&&[...s.keys].filter(k=>o.keys.has(k)).length>=s.keys.size-1).slice(0,12);
+ const b=(L,t,e)=>`<h3 class="lbl" style="margin:16px 0 8px">${t}</h3>`+(L.length?'<div class="bk">'+L.map(rowHTML).join('')+'</div>':`<p class="note">${e}</p>`);
+ return b(same,'Same classes, different sections','No other section combinations work for this exact set of classes.')+b(near,'Swap one class','No close alternatives.');
+}
+const secLine=c=>`<span class="code">${c.code} §${c.sec}</span> ${esc(c.title)}`;
+const when=c=>`${[...c.days].map(d=>DN[d]).join('/')} ${fmt(c.start)}–${fmt(c.end)}`;
+const spanTxt=()=>`${Math.round(D.spanH)} hours`;
+const proj=c=>c.seats-c.lost*D.slotH/D.spanH;
+const pace=c=>c.lost?`lost ${c.lost} in ${spanTxt()}`:`no seats lost in ${spanTxt()}`;
+function renderBackups(){
+ const B=D.backup,plan=SCH[B.plan],byI=i=>SEC[i];
+ const TR={critical:0,high:1,watch:2,ok:3};const order=[...plan.ss].sort((a,b)=>TR[a.tier]-TR[b.tier]||a.seats/a.cap-b.seats/b.cap);
+ const closed=SEC.filter(s=>s.seats<=0).sort((a,b)=>a.code.localeCompare(b.code));
+ const watch=OPEN.filter(s=>s.tier==='critical'||s.tier==='high').sort((a,b)=>a.seats-b.seats);
+ const blocked=Object.keys(D.blocked).map(k=>`${D.courses[k][0]} ${D.courses[k][1]}`);
+ const li=x=>`<li>${secLine(x)} · ${when(x)} · ${nameHTML(x.prof)} · CRN <span class="star">${x.crn}</span> · ${x.seats} open ${tierHTML(x.tier)}</li>`;
+ const tight=[...plan.ss].sort((a,b)=>proj(a)-proj(b))[0];
+ const planShort=plan.ss.filter(c=>proj(c)<=0).map(c=>`${c.code} §${c.sec}`);
+ const goneSoon=OPEN.filter(c=>proj(c)<=0).map(c=>`${c.code} §${c.sec}`);
+ bp.innerHTML=`
+ <div class="alert" style="border-left-color:var(--accent)"><b>At registration</b><ul>
+  <li>If the last ${spanTxt()}' pace holds for the ${Math.round(D.slotH)} hours left, ${planShort.length?`these Plan A classes run out first: ${esc(planShort.join(', '))}.`:`every Plan A class still has seats at your slot. ${esc(tight.code)} §${tight.sec} is the tightest, at about ${Math.max(0,Math.round(proj(tight)))} of ${tight.cap}.`}</li>
+  <li>Projected closed by then: ${esc(goneSoon.join(', ')||'none')}.</li>
+  <li>THL 4490 §006 needs chairperson's approval, so it's out of every schedule. No other open section needs special approval.</li>
+ </ul></div>
+ <div class="alert"><b>What changed since ${esc(D.prevAsOf)}</b><ul>
+  <li>${closed.length} sections you were tracking are now closed.</li>
+  <li>FIN 2324, 2330, 2333 and 2350 are out of every schedule. Each needs FIN 2114, 2227 and 2323 finished first, so you can't take them this spring.</li>
+  <li>FIN 2335 is the only finance elective left, and it needs ECO 3108. Check that in Degree Works.</li>
+  <li>Every class is 3 credits except VSB 3000, which is 1. So 16 credits means 6 classes including VSB 3000.</li>
+  <li>Registration is moving fast. Sections went from nearly empty to full in under a day.</li>
+ </ul></div>
+ <section><h2>Plan A: register in this order</h2><p>The best 16-credit schedule with all 3 must-takes, once seat risk is counted. Classes at the highest risk of filling go first.</p>
+ <ol class="order">${order.map(c=>`<li><div class="ln">${secLine(c)} ${tierHTML(c.tier)}</div><div class="sub">${when(c)} · ${nameHTML(c.prof)} · CRN <span class="star">${c.crn}</span> · ${c.seats} of ${c.cap} open, ${pace(c)}</div></li>`).join('')}</ol></section>
+ <section><h2>If one class fills</h2><p>Each swap keeps the rest of Plan A as it is. Try another section of the same class first.</p><div class="scn">${B.swaps.map(w=>{const c=byI(w.i);
+  return `<div class="swap"><div class="ln"><b>If ${esc(c.code)} §${c.sec} fills</b></div>${w.same.length?`<div class="sub">Same class, other section</div><ol>${w.same.map(i=>li(byI(i))).join('')}</ol>`:'<div class="sub">No other section of this class fits around the rest of Plan A.</div>'}${w.other.length?`<div class="sub">Different class</div><ol>${w.other.map(i=>li(byI(i))).join('')}</ol>`:''}</div>`}).join('')}</div></section>
+ <section><h2>If several classes fill</h2><p>Each scenario closes a group of sections and shows the best schedule left. Click one for its week view. These are estimates based on the latest seat changes.</p><div class="scn">${B.scenarios.map(x=>{const s=x.rank==null?null:SCH[x.rank];
+  return `<div><h3>${esc(x.name)} <span class="sub">${esc(x.blurb)}</span></h3><p class="sub" style="margin:2px 0 8px">Assumes: ${esc(x.assumes)} ${x.lost?`Costs you ${x.lost} of Plan A's ${plan.ss.length} classes.`:'Plan A survives.'} ${x.options.toLocaleString()} schedules left.${x.note?' <b>'+esc(x.note)+'</b>':''}</p>${s?rowHTML(s):'<div class="empty">Nothing valid survives this. See your advisor.</div>'}</div>`}).join('')}</div></section>
+ <section><h2>Fill watchlist</h2><p>Open sections most likely to close next. Days left assumes the latest pace holds. Registration comes in waves, so treat it as rough.</p><div class="tblw"><table class="w"><thead><tr><th>Class</th><th>Professor</th><th>When</th><th>Seats</th><th>Lost</th><th>Days left</th><th>Risk</th></tr></thead><tbody>${watch.map(c=>`<tr><td>${secLine(c)}</td><td>${nameHTML(c.prof)}</td><td>${when(c)}</td><td class="n">${c.seats}/${c.cap}</td><td class="n">${c.lost}</td><td class="n">${c.left??'–'}</td><td>${tierHTML(c.tier)}</td></tr>`).join('')}</tbody></table></div></section>
+ <section><h2>Already closed</h2><p>Watch these for drops. None of them can be scheduled right now.</p><div class="tblw"><table class="w"><thead><tr><th>Class</th><th>Professor</th><th>When</th><th>Seats</th></tr></thead><tbody>${closed.map(c=>`<tr><td>${secLine(c)}${D.blocked[c.key]?' '+tierHTML('blocked'):''}</td><td>${nameHTML(c.prof)}</td><td>${when(c)}</td><td class="n">0/${c.cap}</td></tr>`).join('')}</tbody></table></div><p class="note">Blocked by prerequisites this spring: ${esc(blocked.join(', '))}.</p></section>
+ <p class="note">Risk labels are estimates, not Banner data. Almost gone: 5 or fewer seats, or on pace to close by your slot. Filling fast: on pace to close within about a day, or 40% or less of seats open. Watch: required classes between 10:00a and 2:30p, or on pace to close within about 2.5 days. Banner doesn't show seats held for specific groups, so some open seats may not be available to you.</p>`;
+ bindRows(bp,openDrawer);
+}
+const REPO='romanjackman/spring-2027-finder';let LIVE=null;
+async function fetchLive(){
+ const t=Date.now();
+ const tries=[[`https://api.github.com/repos/${REPO}/contents/seats.json?ref=seats&t=${t}`,{headers:{Accept:'application/vnd.github.raw+json'},cache:'no-store'}],[`https://raw.githubusercontent.com/${REPO}/seats/seats.json?t=${t}`,{cache:'no-store'}]];
+ for(const [u,o] of tries){try{const r=await fetch(u,o);if(r.ok)return await r.json()}catch(e){}}
+ return null;
+}
+function applyLive(j){
+ if(!j||!j.seats)return false;
+ for(const c of SEC){const v=j.seats[c.crn];if(!v||c.tier==='blocked'||c.tier==='approval')continue;
+  c.seats=v[1];c.cap=v[0];
+  if(c.seats<=0)c.tier='closed';else if(c.seats<=5)c.tier='critical';else if(c.tier==='closed')c.tier='high';else if(c.tier==='critical')c.tier='high'}
+ const d=new Date(j.asOfIso);
+ LIVE={iso:j.asOfIso,txt:d.toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' EST'};
+ asOf.textContent=LIVE.txt;return true;
+}
+async function refreshLive(btn){
+ if(btn)btn.textContent='Checking...';
+ const ok=applyLive(await fetchLive());
+ if(!ok&&btn){btn.textContent='No update, try again';return}
+ renderGo();render();renderBackups();
+}
+const MARK={closed:new Set(),got:new Set()};
+function saveMarks(){try{localStorage.setItem('goMarks',JSON.stringify({asOf:D.asOf,closed:[...MARK.closed],got:[...MARK.got]}))}catch(e){}}
+function loadMarks(){try{const x=JSON.parse(localStorage.getItem('goMarks')||'null');if(x){(x.got||[]).forEach(c=>MARK.got.add(c));if(x.asOf===D.asOf)(x.closed||[]).forEach(c=>MARK.closed.add(c))}}catch(e){}}
+function liveBest(){
+ const ok=s=>!s.ss.some(c=>MARK.closed.has(c.crn)||c.seats<=0);
+ const has=s=>[...MARK.got].filter(c=>s.ss.some(x=>x.crn===c)).length;
+ const need=MARK.got.size;
+ return SCH.find(s=>s.cr===16&&s.must&&ok(s)&&has(s)===need)||SCH.find(s=>s.cr===16&&ok(s)&&has(s)===need)||SCH.find(s=>ok(s)&&has(s)===need)||null;
+}
+function ageMin(){return Math.round((Date.now()-new Date(LIVE?LIVE.iso:D.asOfIso))/60000)}
+function ageText(){const n=ageMin();return n<1?'just now':n<60?n+' min ago':Math.floor(n/60)+' hr '+(n%60)+' min ago'}
+function renderGo(){
+ const s=liveBest(),plan=SCH[D.backup.plan];
+ const TR={critical:0,high:1,watch:2,ok:3};
+ const order=s?[...s.ss].sort((a,b)=>MARK.got.has(b.crn)-MARK.got.has(a.crn)||TR[a.tier]-TR[b.tier]||a.seats-b.seats):[];
+ const closed=SEC.filter(c=>MARK.closed.has(c.crn));
+ const todo=order.filter(c=>!MARK.got.has(c.crn));
+ go.innerHTML=`<div class="gohd"><div><b>Seats as of ${esc(LIVE?LIVE.txt:D.asOf)}</b><div class="age">${ageText()}</div></div><button class="gobtn" id="goReload" type="button">Refresh seats</button></div>
+ ${ageMin()>15?'<div class="alert"><b>Seat updates look stopped.</b> Check live seats in Banner before you rely on these numbers.</div>':''}
+ <p class="note">Register top to bottom. If Banner says a class is full, tap Closed and the next best schedule appears. Tap Got it once you're in, and that class stays in every option.</p>
+ ${s?`${s!==plan?'<div class="alert"><b>This is no longer Plan A.</b> It is the best saved schedule left after your taps.</div>':''}
+ <p class="sub" style="margin:10px 0 2px">${s.ss.length} classes · ${s.cr} credits${s.must?'':' · <b>missing a must-take</b>'} · #${s.rank}</p>
+ <div class="crns" id="goCrns">${todo.map(c=>c.crn).join(', ')||'All registered'}</div>
+ <button class="gobtn" id="goCopy" type="button" style="width:100%;margin-bottom:12px">Copy CRNs still to add</button>
+ ${order.map(c=>{const got=MARK.got.has(c.crn);return `<div class="gocl${got?' got':''}"><div class="ln">${secLine(c)} ${got?'':tierHTML(c.tier)}</div><div class="sub">${when(c)} · ${esc(c.prof)} · ${c.seats} of ${c.cap} open</div><div class="crn">${c.crn}</div><div class="act"><button class="gobtn${got?' on':''}" type="button" data-got="${c.crn}">${got?'Got it ✓':'Got it'}</button><button class="gobtn" type="button" data-closed="${c.crn}"${got?' disabled':''}>Closed</button></div></div>`}).join('')}`
+ :'<div class="empty">No saved schedule fits these taps. Undo one below, or message Claude from your phone for a fresh search.</div>'}
+ ${closed.length?`<h3 class="lbl" style="margin:16px 0 8px">Marked closed</h3>${closed.map(c=>`<div class="gohd"><span>${esc(c.code)} §${c.sec}</span><button class="gobtn" type="button" data-undo="${c.crn}">Undo</button></div>`).join('')}`:''}
+ ${MARK.closed.size||MARK.got.size?'<button class="gobtn" id="goReset" type="button" style="width:100%;margin-top:8px">Clear all taps</button>':''}
+ <p class="note" style="margin-top:14px"><a class="rl" href="https://mynova.villanova.edu/launch-task/all/search-for-classes" target="_blank" rel="noopener">Check live seats in Banner</a>. Seats update on their own about every 3 minutes, even with this page closed. Banner is always right if they differ.</p>`;
+ const up=()=>{saveMarks();renderGo();shown=50;render()};
+ go.querySelectorAll('[data-got]').forEach(b=>b.onclick=()=>{const c=b.dataset.got;MARK.got.has(c)?MARK.got.delete(c):MARK.got.add(c);up()});
+ go.querySelectorAll('[data-closed]').forEach(b=>b.onclick=()=>{MARK.closed.add(b.dataset.closed);up()});
+ go.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>{MARK.closed.delete(b.dataset.undo);up()});
+ const rs=document.getElementById('goReset');if(rs)rs.onclick=()=>{MARK.closed.clear();MARK.got.clear();up()};
+ const rb=document.getElementById('goReload');rb.onclick=()=>refreshLive(rb);
+ const cp=document.getElementById('goCopy');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(todo.map(c=>c.crn).join(', '));cp.textContent='Copied'}catch(e){cp.textContent='Press and hold the numbers above to copy'}};
+}
+let lastFocus;
+function openDrawer(s){
+ lastFocus=document.activeElement;
+ const miss=MUSTS.filter(k=>!s.keys.has(k));
+ drawer.innerHTML=`<div class="dh"><h2 id="dTitle">Schedule #${s.rank}</h2><button class="btn close" type="button" id="dClose" aria-label="Close">×</button></div>
+ <p class="note">${dayText(s)}${miss.length?' · Missing '+miss.join(', '):''}</p>
+ <div class="score"><div class="sc"><span>Overall</span><b>${s.score.toFixed(1)}</b></div><div class="sc"><span>Need (1–3)</span><b>${s.need.toFixed(2)}</b></div><div class="sc"><span>Prof. score</span><b>${s.prof.toFixed(2)}</b></div><div class="sc"><span>Time fit /10</span><b>${s.time.toFixed(1)}</b></div></div>
+ <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true" data-t="w">Week at a glance</button><button class="tab" role="tab" aria-selected="false" data-t="b">Backups</button></div>
+ <div id="tw">${weekHTML(s)}${cardsHTML(s)}</div><div id="tb" hidden>${backupsHTML(s)}</div>`;
+ drawer.hidden=false;shade.hidden=false;drawer.scrollTop=0;
+ dClose.onclick=closeDrawer;dClose.focus();
+ drawer.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{drawer.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));tw.hidden=t.dataset.t!=='w';tb.hidden=t.dataset.t!=='b'});
+ bindRows(drawer.querySelector('#tb'),openDrawer);
+}
+function closeDrawer(){drawer.hidden=true;shade.hidden=true;lastFocus&&lastFocus.focus()}
+shade.onclick=closeDrawer;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!drawer.hidden)closeDrawer()});
+load().catch(e=>{count.textContent='Could not load schedules: '+e.message});
+</script>
