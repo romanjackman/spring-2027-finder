@@ -1,0 +1,44 @@
+name: seats
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7 19 5 11 *"
+    - cron: "37 20 5 11 *"
+    - cron: "7 22 5 11 *"
+    - cron: "37 22 5 11 *"
+    - cron: "7 23 5 11 *"
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: seats
+  cancel-in-progress: false
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - name: Watch seats
+        run: |
+          STOP=$(date -u -d '2026-11-06 02:00:00' +%s)
+          LEG_END=$(( $(date +%s) + 19200 ))
+          git config user.name "seat-bot"
+          git config user.email "seat-bot@users.noreply.github.com"
+          while [ "$(date +%s)" -lt "$STOP" ] && [ "$(date +%s)" -lt "$LEG_END" ]; do
+            if python3 seat_watch.py all_schedules.json /tmp/seats.json; then
+              rm -rf /tmp/pub && mkdir /tmp/pub && cp /tmp/seats.json /tmp/pub/seats.json
+              (cd /tmp/pub && git init -q -b seats && git add seats.json \
+                && git -c user.name=seat-bot -c user.email=seat-bot@users.noreply.github.com commit -q -m "Update seats" \
+                && git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" seats) || echo "push failed"
+            else
+              echo "pull failed"
+            fi
+            sleep 170
+          done
+      - name: Start the next leg
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(date +%s)" -lt "$(date -u -d '2026-11-06 01:50:00' +%s)" ]; then gh workflow run seats.yml --repo "${{ github.repository }}"; fi
