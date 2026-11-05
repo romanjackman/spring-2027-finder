@@ -436,7 +436,7 @@ function renderGo(){
  go.innerHTML=`<div class="gohd"><div><b>Seats as of ${esc(LIVE?LIVE.txt:D.asOf)}</b><div class="age">${ageText()}</div></div><button class="gobtn" id="goReload" type="button">Refresh seats</button></div>
  ${ageMin()>15?'<div class="alert"><b>Seat updates look stopped.</b> Check live seats in Banner before you rely on these numbers.</div>':''}
  <p class="note">Register top to bottom. If Banner says a class is full, tap Closed and the next best schedule appears. Tap Got it once you're in, and that class stays in every option.</p>
- ${s?`${s!==plan?'<div class="alert"><b>This is no longer Plan A.</b> It is the best saved schedule left after your taps.</div>':''}
+ ${s?`${s!==plan?'<div class="alert"><b>This is no longer Plan A.</b> It is the best saved schedule left right now.</div>':''}
  <p class="sub" style="margin:10px 0 2px">${s.ss.length} classes · ${s.cr} credits${s.must?'':' · <b>missing a must-take</b>'} · #${s.rank}</p>
  <div class="crns" id="goCrns">${todo.map(c=>c.crn).join(', ')||'All registered'}</div>
  <button class="gobtn" id="goCopy" type="button" style="width:100%;margin-bottom:12px">Copy CRNs still to add</button>
